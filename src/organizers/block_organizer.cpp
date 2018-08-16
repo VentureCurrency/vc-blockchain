@@ -25,7 +25,6 @@
 #include <utility>
 #include <bitcoin/bitcoin.hpp>
 #include <bitcoin/blockchain/interface/fast_chain.hpp>
-#include <bitcoin/blockchain/pools/header_pool.hpp>
 #include <bitcoin/blockchain/settings.hpp>
 
 namespace libbitcoin {
@@ -39,12 +38,11 @@ using namespace std::placeholders;
 
 block_organizer::block_organizer(prioritized_mutex& mutex,
     dispatcher& priority_dispatch, threadpool& threads, fast_chain& chain,
-    header_pool& pool, const settings& settings)
+    const settings& settings, const bc::settings& bitcoin_settings)
   : fast_chain_(chain),
     mutex_(mutex),
     stopped_(true),
-    pool_(pool),
-    validator_(priority_dispatch, chain, settings),
+    validator_(priority_dispatch, chain, settings, bitcoin_settings),
     downloader_subscriber_(std::make_shared<download_subscriber>(threads, NAME))
 {
 }
@@ -98,7 +96,7 @@ code block_organizer::organize(block_const_ptr block, size_t height)
     //#########################################################################
 
     // Queue download notification to invoke validation on downloader thread.
-    downloader_subscriber_->relay(error_code, block, height);
+    ////downloader_subscriber_->relay(error_code, block, height);
 
     // Validation result is returned by metadata.error.
     // Failure code implies store corruption, caller should log.
@@ -123,7 +121,11 @@ bool block_organizer::handle_check(const code& ec, block_const_ptr block,
 
     // If initial height is misaligned try again on next download.
     if (height != fast_chain_.top_valid_candidate_state()->height() + 1u)
+    {
+        //---------------------------------------------------------------------
+        mutex_.unlock_high_priority();
         return true;
+    }
 
     // Stack up the validated blocks for possible reorganization.
     auto branch_cache = std::make_shared<block_const_ptr_list>();
@@ -247,7 +249,7 @@ void block_organizer::handle_accept(const code& ec, block_const_ptr block,
 }
 
 // private
-void block_organizer::handle_connect(const code& ec, block_const_ptr block,
+void block_organizer::handle_connect(const code& ec, block_const_ptr,
     result_handler handler)
 {
     if (stopped())
