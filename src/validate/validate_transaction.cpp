@@ -71,10 +71,11 @@ void validate_transaction::stop()
 //-----------------------------------------------------------------------------
 // These checks are context free.
 
-code validate_transaction::check(transaction_const_ptr tx) const
+code validate_transaction::check(transaction_const_ptr tx, uint64_t max_money)
+    const
 {
     // Run context free checks.
-    return tx->check(true, retarget_);
+    return tx->check(max_money, true);
 }
 
 // Accept sequence.
@@ -103,6 +104,8 @@ void validate_transaction::handle_populated(const code& ec,
         handler(ec);
         return;
     }
+
+    BITCOIN_ASSERT(tx->metadata.state);
 
     // Run contextual tx checks.
     handler(tx->accept());
