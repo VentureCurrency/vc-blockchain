@@ -189,7 +189,8 @@ bool populate_chain_state::populate_all(chain_state::data& data,
 {
     // Construct the map to inform chain state data population.
     const auto map = chain_state::get_map(data.height, checkpoints_, forks_,
-        bitcoin_settings_.retargeting_interval, bitcoin_settings_.net_sample,
+        bitcoin_settings_.retargeting_interval(),
+        bitcoin_settings_.activation_sample,
         bitcoin_settings_.bip9_bit0_active_checkpoint,
         bitcoin_settings_.bip9_bit1_active_checkpoint);
 
@@ -204,8 +205,8 @@ bool populate_chain_state::populate_all(chain_state::data& data,
 // Populate chain state for the top block|header.
 chain_state::ptr populate_chain_state::populate(bool candidate) const
 {
+    header header;
     size_t header_height;
-    header header(bitcoin_settings_);
 
     return fast_chain_.get_top(header, header_height, candidate) ?
         populate(header, header_height, candidate) : nullptr;
@@ -215,7 +216,7 @@ chain_state::ptr populate_chain_state::populate(bool candidate) const
 chain_state::ptr populate_chain_state::populate(size_t header_height,
     bool candidate) const
 {
-    header header(bitcoin_settings_);
+    header header;
 
     return fast_chain_.get_header(header, header_height, candidate) ?
         populate(header, header_height, candidate) : nullptr;
