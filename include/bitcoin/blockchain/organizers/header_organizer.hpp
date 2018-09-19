@@ -33,7 +33,7 @@ namespace libbitcoin {
 namespace blockchain {
 
 /// This class is thread safe.
-/// Organises headers to the store via the header pool.
+/// Organizes headers to the store via the header pool.
 class BCB_API header_organizer
 {
 public:

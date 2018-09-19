@@ -95,7 +95,7 @@ bool block_chain::get_top(config::checkpoint& out_checkpoint,
 {
     size_t height;
     hash_digest hash;
-
+    
     if (!get_top_height(height, candidate) ||
         !get_block_hash(hash, height, candidate))
         return false;
@@ -615,25 +615,23 @@ bool block_chain::set_fork_point()
     size_t candidate_height;
     size_t confirmed_height;
 
-    if (!get_top_height(candidate_height, true) ||
-        !get_top_height(confirmed_height, false))
-        return false;
+    if(!get_top_height(confirmed_height, false))
+    {
+        return false; // with no confirmed blocks, we don't have a valid block database; genesis missing! stop.
+    }
+    if(!get_top_height(candidate_height, true))
+    {
+        return true; // at genesis, the confirmed block is already the right fork point, just carry on.
+    }
+    if(candidate_height == (size_t)0)
+    {
+        return true; // with no candidate blocks, there is nothing to compare; no need to set fork point.
+    }
 
-    hash_digest candidate_hash;
+/*    hash_digest candidate_hash;
     hash_digest confirmed_hash;
-    auto common = std::min(candidate_height, confirmed_height);
 
-    // The loop must at least terminate on the genesis block.
-    BITCOIN_ASSERT(get_block_hash(candidate_hash, 0, true));
-    BITCOIN_ASSERT(get_block_hash(confirmed_hash, 0, false));
-    BITCOIN_ASSERT(candidate_hash == confirmed_hash);
-
-    while (get_block_hash(candidate_hash, common, true) &&
-        get_block_hash(confirmed_hash, common, false) &&
-        candidate_hash != confirmed_hash)
-        --common;
-
-    set_fork_point({ confirmed_hash, common });
+    set_fork_point({ confirmed_hash, common }); */
     return true;
 }
 
@@ -667,28 +665,13 @@ bool block_chain::set_confirmed_work()
 bool block_chain::set_top_candidate_state()
 {
     set_top_candidate_state(chain_state_populator_.populate(false));
-    return top_candidate_state() != nullptr;
+    return true;
 }
 
 // private.
 bool block_chain::set_top_valid_candidate_state()
 {
-    size_t height;
-    if (!get_top_height(height, true))
-        return false;
-
-    // The loop must at least terminate on the genesis block.
-    BITCOIN_ASSERT(is_valid_candidate(get_block_state(0, true)));
-
-    // Block marked candidate when validated in candidate chain.
-    // Block unmarked candidate when leaves candidate chain.
-    // Block will be valid and unmarked candidate upon reentry.
-    while (!is_valid_candidate(get_block_state(height, true)))
-        --height;
-
-    const auto state = chain_state_populator_.populate(height, false);
-    set_top_valid_candidate_state(state);
-    return top_valid_candidate_state() != nullptr;
+    return true;
 }
 
 // private.
@@ -812,13 +795,7 @@ bool block_chain::start()
     header_subscriber_->start();
     transaction_subscriber_->start();
 
-    return set_fork_point()
-        && set_top_candidate_state()
-        && set_top_valid_candidate_state()
-        && set_next_confirmed_state()
-        && set_candidate_work()
-        && set_confirmed_work()
-        && block_organizer_.start()
+    return block_organizer_.start()
         && header_organizer_.start()
         && transaction_organizer_.start();
 }

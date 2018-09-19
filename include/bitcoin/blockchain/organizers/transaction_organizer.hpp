@@ -36,7 +36,7 @@ namespace libbitcoin {
 namespace blockchain {
 
 /// This class is thread safe.
-/// Organises transactions via the tx metadata pool to the store.
+/// Organizes transactions via the tx metadata pool to the store.
 class BCB_API transaction_organizer
 {
 public:
